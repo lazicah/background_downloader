@@ -292,7 +292,7 @@ func getHost(_ task: Task) -> String  {
 /// interval to the Dart side
 func updateProgress(task: Task, totalBytesExpected: Int64, totalBytesDone: Int64) {
     let info = BDPlugin.progressInfo[task.taskId] ?? (lastProgressUpdateTime: 0.0, lastProgressValue: 0.0, lastTotalBytesDone: 0, lastNetworkSpeed: -1.0)
-    if totalBytesExpected != NSURLSessionTransferSizeUnknown && Date().timeIntervalSince1970 > info.lastProgressUpdateTime {
+    if totalBytesExpected != NSURLSessionTransferSizeUnknown {
         let progress = min(Double(totalBytesDone) / Double(totalBytesExpected), 0.999)
         if progress - info.lastProgressValue > 0.02 {
             // calculate network speed and time remaining
