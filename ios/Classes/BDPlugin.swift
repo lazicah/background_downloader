@@ -58,6 +58,8 @@ public class BDPlugin: NSObject, FlutterPlugin, UNUserNotificationCenterDelegate
         registrar.addApplicationDelegate(instance)
         let defaults = UserDefaults.standard
         requireWiFi = RequireWiFi(rawValue: defaults.integer(forKey: BDPlugin.keyRequireWiFi))!
+         // Initialize the app state monitor
+        _ = AppStateMonitor.shared
     }
     
     @objc

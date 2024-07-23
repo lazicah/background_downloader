@@ -13,8 +13,69 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
     
     static let instance = UrlSessionDelegate()
     static var urlSession: URLSession?
+    private var foregroundSession: URLSession!
+    private var backgroundSession: URLSession!
     public static var sessionIdentifier = "com.bbflight.background_downloader.Downloader"
     private static var backgroundCompletionHandler: (() -> Void)?
+    private var state: DownloadManagerState = .foreground
+
+    enum DownloadManagerState {
+        case foreground
+        case background
+    }
+
+    func switchToForeground() {
+        if state == .background {
+            UrlSessionDelegate.urlSession = backgroundSession
+            backgroundSession.getAllTasks { [weak self] tasks in
+                tasks.forEach { task in
+                    if let downloadTask = task as? URLSessionDownloadTask {
+                        downloadTask.cancel { resumeData in
+                            if let resumeData = resumeData {
+                                let newDownloadTask = self?.foregroundSession.downloadTask(withResumeData: resumeData)
+                                newDownloadTask?.resume()
+                            }
+                        }
+                    }
+                }
+            }
+            state = .foreground
+        }
+    }
+
+    func switchToBackground() {
+        if state == .foreground {
+            beginBackgroundTask()
+            UrlSessionDelegate.urlSession = foregroundSession
+            foregroundSession.getAllTasks { [weak self] tasks in
+                tasks.forEach { task in
+                    if let downloadTask = task as? URLSessionDownloadTask {
+                        downloadTask.cancel { resumeData in
+                            if let resumeData = resumeData {
+                                let newDownloadTask = self?.backgroundSession.downloadTask(withResumeData: resumeData)
+                                newDownloadTask?.resume()
+                            }
+                        }
+                    }
+                }
+            }
+            
+            state = .background
+        }
+    }
+
+    private func beginBackgroundTask() {
+        backgroundTask = UIApplication.shared.beginBackgroundTask(expirationHandler: {
+            self.endBackgroundTask()
+        })
+    }
+
+    private func endBackgroundTask() {
+        if backgroundTask != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTask)
+            backgroundTask = .invalid
+        }
+    }
     
     //MARK: URLSessionTaskDelegate
     
@@ -371,20 +432,34 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
         if UrlSessionDelegate.urlSession != nil {
             return
         }
-        let config = URLSessionConfiguration.default// .background(withIdentifier: UrlSessionDelegate.sessionIdentifier)
+        // let config = URLSessionConfiguration.default// .background(withIdentifier: UrlSessionDelegate.sessionIdentifier)
+        let foregroundSessionConfig = URLSessionConfiguration.default
+        foregroundSessionConfig.httpMaximumConnectionsPerHost = 40
+        let backgroundSessionConfig = URLSessionConfiguration.background(withIdentifier:  UrlSessionDelegate.sessionIdentifier)
+        backgroundSessionConfig.httpMaximumConnectionsPerHost = 40
         let defaults = UserDefaults.standard
         let storedTimeoutIntervalForResource = defaults.double(forKey: BDPlugin.keyConfigResourceTimeout) // seconds
         let timeOutIntervalForResource = storedTimeoutIntervalForResource > 0 ? storedTimeoutIntervalForResource : BDPlugin.defaultResourceTimeout
         os_log("timeoutIntervalForResource = %d seconds", log: log, type: .info, Int(timeOutIntervalForResource))
-        config.timeoutIntervalForResource = timeOutIntervalForResource
+        foregroundSessionConfig.timeoutIntervalForResource = timeOutIntervalForResource
+        backgroundSessionConfig.timeoutIntervalForResource = timeOutIntervalForResource
         let storedTimeoutIntervalForRequest = defaults.double(forKey: BDPlugin.keyConfigRequestTimeout) // seconds
         let timeoutIntervalForRequest = storedTimeoutIntervalForRequest > 0 ? storedTimeoutIntervalForRequest : BDPlugin.defaultRequestTimeout
         os_log("timeoutIntervalForRequest = %d seconds", log: log, type: .info, Int(timeoutIntervalForRequest))
-        config.timeoutIntervalForRequest = timeoutIntervalForRequest
+        foregroundSessionConfig.timeoutIntervalForRequest = timeoutIntervalForRequest
+        backgroundSessionConfig.timeoutIntervalForRequest = timeoutIntervalForRequest
         let proxyAddress = defaults.string(forKey: BDPlugin.keyConfigProxyAdress)
         let proxyPort = defaults.integer(forKey: BDPlugin.keyConfigProxyPort)
         if (proxyAddress != nil && proxyPort != 0) {
-            config.connectionProxyDictionary = [
+            foregroundSessionConfig.connectionProxyDictionary = [
+                kCFNetworkProxiesHTTPEnable: true,
+                kCFNetworkProxiesHTTPProxy: proxyAddress!,
+                kCFNetworkProxiesHTTPPort: proxyPort,
+                "HTTPSEnable": true,
+                "HTTPSProxy": proxyAddress!,
+                "HTTPSPort": proxyPort
+            ]
+            backgroundSessionConfig.connectionProxyDictionary = [
                 kCFNetworkProxiesHTTPEnable: true,
                 kCFNetworkProxiesHTTPProxy: proxyAddress!,
                 kCFNetworkProxiesHTTPPort: proxyPort,
@@ -396,7 +471,9 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
         } else {
             os_log("Not using proxy for any task", log: log, type: .info)
         }
-        UrlSessionDelegate.urlSession = URLSession(configuration: config, delegate: UrlSessionDelegate.instance, delegateQueue: nil)
+        foregroundSession = URLSession(configuration: foregroundSessionConfig, delegate: UrlSessionDelegate.instance, delegateQueue: nil)
+        backgroundSession = URLSession(configuration: backgroundSessionConfig, delegate: UrlSessionDelegate.instance, delegateQueue: nil)
+        UrlSessionDelegate.urlSession = foregroundSession
     }
     
     /// Return all tasks in this urlSession
