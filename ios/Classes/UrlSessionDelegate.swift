@@ -371,7 +371,7 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
         if UrlSessionDelegate.urlSession != nil {
             return
         }
-        let config = URLSessionConfiguration.background(withIdentifier: UrlSessionDelegate.sessionIdentifier)
+        let config = URLSessionConfiguration.default// .background(withIdentifier: UrlSessionDelegate.sessionIdentifier)
         let defaults = UserDefaults.standard
         let storedTimeoutIntervalForResource = defaults.double(forKey: BDPlugin.keyConfigResourceTimeout) // seconds
         let timeOutIntervalForResource = storedTimeoutIntervalForResource > 0 ? storedTimeoutIntervalForResource : BDPlugin.defaultResourceTimeout
