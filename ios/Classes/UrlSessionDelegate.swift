@@ -13,8 +13,8 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
     
     static let instance = UrlSessionDelegate()
     static var urlSession: URLSession?
-    private var foregroundSession: URLSession!
-    private var backgroundSession: URLSession!
+    static var foregroundSession: URLSession!
+    static var backgroundSession: URLSession!
     public static var sessionIdentifier = "com.bbflight.background_downloader.Downloader"
     private static var backgroundCompletionHandler: (() -> Void)?
     private var state: DownloadManagerState = .foreground
