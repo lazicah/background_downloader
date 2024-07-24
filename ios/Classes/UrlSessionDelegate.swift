@@ -13,8 +13,8 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
     
     static let instance = UrlSessionDelegate()
     static var urlSession: URLSession?
-    static var foregroundSession: URLSession!
-    static var backgroundSession: URLSession!
+    private static var foregroundSession: URLSession!
+    private static var backgroundSession: URLSession!
     public static var sessionIdentifier = "com.bbflight.background_downloader.Downloader"
     private static var backgroundCompletionHandler: (() -> Void)?
     private var state: DownloadManagerState = .foreground
@@ -27,19 +27,19 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
 
     func switchToForeground() {
         if state == .background {
-            UrlSessionDelegate.urlSession = backgroundSession
-            backgroundSession.getAllTasks { [weak self] tasks in
-                tasks.forEach { task in
-                    if let downloadTask = task as? URLSessionDownloadTask {
-                        downloadTask.cancel { resumeData in
-                            if let resumeData = resumeData {
-                                let newDownloadTask = self?.foregroundSession.downloadTask(withResumeData: resumeData)
-                                newDownloadTask?.resume()
-                            }
-                        }
-                    }
-                }
-            }
+            UrlSessionDelegate.urlSession = UrlSessionDelegate.backgroundSession
+            // UrlSessionDelegate.urlSession.getAllTasks { [weak self] tasks in
+            //     tasks.forEach { task in
+            //         if let downloadTask = task as? URLSessionDownloadTask {
+            //             downloadTask.cancel { resumeData in
+            //                 if let resumeData = resumeData {
+            //                     let newDownloadTask = UrlSessionDelegate.urlSession.downloadTask(withResumeData: resumeData)
+            //                     newDownloadTask?.resume()
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
             state = .foreground
         }
     }
@@ -47,19 +47,19 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
     func switchToBackground() {
         if state == .foreground {
             beginBackgroundTask()
-            UrlSessionDelegate.urlSession = foregroundSession
-            foregroundSession.getAllTasks { [weak self] tasks in
-                tasks.forEach { task in
-                    if let downloadTask = task as? URLSessionDownloadTask {
-                        downloadTask.cancel { resumeData in
-                            if let resumeData = resumeData {
-                                let newDownloadTask = self?.backgroundSession.downloadTask(withResumeData: resumeData)
-                                newDownloadTask?.resume()
-                            }
-                        }
-                    }
-                }
-            }
+            UrlSessionDelegate.urlSession = UrlSessionDelegate.foregroundSession
+            // UrlSessionDelegate.urlSession.getAllTasks { [weak self] tasks in
+            //     tasks.forEach { task in
+            //         if let downloadTask = task as? URLSessionDownloadTask {
+            //             downloadTask.cancel { resumeData in
+            //                 if let resumeData = resumeData {
+            //                     let newDownloadTask =  UrlSessionDelegate.urlSession.downloadTask(withResumeData: resumeData)
+            //                     newDownloadTask?.resume()
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
             
             state = .background
         }
@@ -474,7 +474,7 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
         }
         foregroundSession = URLSession(configuration: foregroundSessionConfig, delegate: UrlSessionDelegate.instance, delegateQueue: nil)
         backgroundSession = URLSession(configuration: backgroundSessionConfig, delegate: UrlSessionDelegate.instance, delegateQueue: nil)
-        UrlSessionDelegate.urlSession = foregroundSession
+        UrlSessionDelegate.urlSession = UrlSessionDelegate.foregroundSession
     }
     
     /// Return all tasks in this urlSession

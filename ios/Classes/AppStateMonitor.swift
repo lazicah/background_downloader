@@ -1,4 +1,5 @@
 import UIKit
+import Foundation
 
 class AppStateMonitor {
     static let shared = AppStateMonitor()
@@ -15,12 +16,12 @@ class AppStateMonitor {
     @objc private func appDidBecomeActive() {
         print("App moved to the foreground")
         // Handle app moving to the foreground
-        DownloadManager.shared.switchToForeground()
+        UrlSessionDelegate.instance.switchToForeground()
     }
 
     @objc private func appDidEnterBackground() {
         print("App entered the background")
         // Handle app moving to the background
-        DownloadManager.shared.switchToBackground()
+        UrlSessionDelegate.instance.switchToBackground()
     }
 }
