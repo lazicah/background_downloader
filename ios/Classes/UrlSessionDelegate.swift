@@ -18,6 +18,7 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
     public static var sessionIdentifier = "com.bbflight.background_downloader.Downloader"
     private static var backgroundCompletionHandler: (() -> Void)?
     private var state: DownloadManagerState = .foreground
+    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     enum DownloadManagerState {
         case foreground
