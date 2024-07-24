@@ -27,19 +27,17 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
 
     func switchToForeground() {
         if state == .background {
-            UrlSessionDelegate.urlSession = UrlSessionDelegate.backgroundSession
-            // UrlSessionDelegate.urlSession.getAllTasks { [weak self] tasks in
-            //     tasks.forEach { task in
-            //         if let downloadTask = task as? URLSessionDownloadTask {
-            //             downloadTask.cancel { resumeData in
-            //                 if let resumeData = resumeData {
-            //                     let newDownloadTask = UrlSessionDelegate.urlSession.downloadTask(withResumeData: resumeData)
-            //                     newDownloadTask?.resume()
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
+            UrlSessionDelegate.backgroundSession.getTasksWithCompletionHandler { dataTasks, uploadTasks, downloadTasks in
+                for downloadTask in downloadTasks {
+                    downloadTask.cancel { resumeData in
+                        if let resumeData = resumeData {
+                            let newDownloadTask = UrlSessionDelegate.foregroundSession.downloadTask(withResumeData: resumeData)
+                            newDownloadTask.resume()
+                        }
+                    }
+                }
+                UrlSessionDelegate.urlSession = UrlSessionDelegate.foregroundSession
+            }
             state = .foreground
         }
     }
@@ -47,19 +45,19 @@ public class UrlSessionDelegate : NSObject, URLSessionDelegate, URLSessionDownlo
     func switchToBackground() {
         if state == .foreground {
             beginBackgroundTask()
-            UrlSessionDelegate.urlSession = UrlSessionDelegate.foregroundSession
-            // UrlSessionDelegate.urlSession.getAllTasks { [weak self] tasks in
-            //     tasks.forEach { task in
-            //         if let downloadTask = task as? URLSessionDownloadTask {
-            //             downloadTask.cancel { resumeData in
-            //                 if let resumeData = resumeData {
-            //                     let newDownloadTask =  UrlSessionDelegate.urlSession.downloadTask(withResumeData: resumeData)
-            //                     newDownloadTask?.resume()
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
+           
+            UrlSessionDelegate.foregroundSession.getTasksWithCompletionHandler { dataTasks, uploadTasks, downloadTasks in
+                for downloadTask in downloadTasks {
+                    downloadTask.cancel { resumeData in
+                        if let resumeData = resumeData {
+                            let newDownloadTask = UrlSessionDelegate.backgroundSession.downloadTask(withResumeData: resumeData)
+                            newDownloadTask.resume()
+                        }
+                    }
+                }
+                UrlSessionDelegate.urlSession = UrlSessionDelegate.backgroundSession
+            }
+
             
             state = .background
         }
